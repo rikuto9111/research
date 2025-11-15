@@ -1,68 +1,35 @@
-N,M,K = map(int,input().split(" "))
+N,X,Y = map(int,input().split(" "))
+
+given = [int(n) for n in input().split(" ")]
 
 
-H = input().split(" ")
-Hl = []
+cor = []
 
-
-  
-  
 for i in range(N):
-  Hl.append(int(H[i]))
-  
-B = input().split(" ")
-Bl = []
+  corlists = []
+  corlists.append(X*given[i])
+  corlists.append(Y*given[i])
+  cor.append(corlists)
 
-for m in range(M):
-  Bl.append([int(B[m]),0])
+corf = sorted(cor,key = lambda x:x[0])
+corl = sorted(cor,key = lambda x:x[1])
 
-Hs = sorted(Hl)
-Bs = sorted(Bl,key = lambda x:x[0])
+f = corf[len(corf)-1][0]
+l = corl[0][1]
 
 
-def search(x):
-  low = 0
-  high = M-1
-  
-  
-  
-  if Bs[low][0] >= x:#左はじ
-    return low
-  if Bs[high][0] < x:#右端
-    return -1
-  
-  while low < high + 1:
-    print(low)
-    mid = (low + high)//2
-    
-    if x == Bs[mid][0]:
-      return mid
-    
-    elif x > Bs[mid][0]:
-      low = mid
-    else:
-      high = mid
-  
 
-  while high <= M -1:
-    if Bs[high][1] == 1:
-      high += 1
-    else:
-      return -1
-  
-  if high == M:
-    return -1
-  
-  
 
-  return high
 
-print(Bs)
-ans = 0
-for i in range(N):
-  t = search(Hs[i])
-  if t != -1:
-    Bs[t][1] = 1
-    ans += 1
+dif = Y - X
 
-print(ans)
+
+
+if f <= l:
+  kosuu = 0
+  for i in range(N):
+    number = (l - X * given[i]) // dif
+    kosuu += number
+  print(kosuu)
+else:
+  print(-1)
