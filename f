@@ -1,35 +1,33 @@
-N,X,Y = map(int,input().split(" "))
+S = [int(n) for n in input()]
 
-given = [int(n) for n in input().split(" ")]
-
-
-cor = []
-
-for i in range(N):
-  corlists = []
-  corlists.append(X*given[i])
-  corlists.append(Y*given[i])
-  cor.append(corlists)
-
-corf = sorted(cor,key = lambda x:x[0])
-corl = sorted(cor,key = lambda x:x[1])
-
-f = corf[len(corf)-1][0]
-l = corl[0][1]
+seqback = 1
+seqafter = 0
 
 
+b = 0#ひとつ前
 
+ans = 0
 
-
-dif = Y - X
-
-
-
-if f <= l:
-  kosuu = 0
-  for i in range(N):
-    number = (l - X * given[i]) // dif
-    kosuu += number
-  print(kosuu)
-else:
-  print(-1)
+for i in range(len(S)):
+  if i == 0:
+    b = S[i]
+  
+  else:
+    if b == S[i]:
+      seqback += 1
+      seqafter += 1
+      
+    elif S[i] == b+1:#連続ストップして次の数字が+1の値
+      #seqback = 0#左の連続カウントリセット
+      ans += 1
+      seqafter += 1#右の連続カウントスタート
+      
+    elif S[i] != b+1:#次の数字が+1になっていない
+      seqback = 0
+      seqback += 1
+      
+    b = S[i]#過去の人にする
+    if seqback == seqafter:
+      ans += min(seqback,seqafter)
+      seqback = seqafter#右にカウントしていたものを左カウントに持っていく
+      seqafter = 0
