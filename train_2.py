@@ -399,8 +399,37 @@ def fine_tuning(model,train_fine_set,valid_set):
 
 
 
+普通のfine_tuning
 
 
+def fine_tuning(model,train_fine_set,valid_set):
+
+
+    
+
+    train_file_fine, train_data_fine, train_oneh_fine = train_fine_set
+    valid_file, valid_data, valid_oneh = valid_set
+    base_weights = model.get_weights()#前の重み取得
+
+    
+
+    best_acc = -1
+
+    model.compile(#モデルの重み更新方法 loss,学習中に表示される性能指標を定義 根本的なものの定義
+    optimizer=keras.optimizers.Adam(learning_rate=0.001),
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+     )#これはok
+
+
+    model.set_weights(base_weights)#最初だけ
+#重み引き継ぎ
+
+    history = model.fit(train_data_fine, train_oneh_fine, batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=2, validation_data=(valid_data, valid_oneh))
+
+    model.summary()
+
+    return model,history.history['val_accuracy']
 
 
 
