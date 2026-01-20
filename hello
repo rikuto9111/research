@@ -1,1 +1,147 @@
-hello
+//
+//  LocationManager.swift
+//  ramen
+//
+//  Created by user on 2025/12/19.
+//import SwiftUI
+import MapKit
+import SwiftUI
+// 表示用モデル
+struct RamenShop: Identifiable {
+    let id = UUID()
+    let name: String
+    let rating: Double
+    let coordinate: CLLocationCoordinate2D
+    
+    let isOpenNow: Bool?
+    let regularHours:[String]?
+    //let phonenumber:String?
+}
+
+@Observable
+class RamenData {//こういう形式になってるらしい
+
+    // ===== JSONレスポンス構造 =====
+    struct ResultJson: Codable {//[place:{DisplayName{text},Location:{latitude,logitude}},rating:,place:]..
+
+        struct Place: Codable {
+
+            struct DisplayName: Codable {
+                let text: String? //店名
+            }
+
+            struct Location: Codable {
+                let latitude: Double
+                let longitude: Double
+            }
+            struct OpeningHours: Codable {
+                        let openNow: Bool?
+                        let weekdayDescriptions: [String]?
+                    }
+            
+            //struct Photo: Codable {
+                       // let name: String   // ← 超重要
+                    //}
+            
+            
+            let displayName: DisplayName?
+            let rating: Double?//Google評価 ないものもあるから?
+            let location: Location?//場所
+            let currentOpeningHours: OpeningHours?
+            let regularOpeningHours: OpeningHours?
+            //let nationalPhoneNumber: String?
+            
+            
+            //let photos:[Photo]?//photoって複数帰ってくるの？　あくまでnameしかないからこれは別にurlではなくこれを入れれば画像が手に入るわけではない　これを使ってさらにapiで取得してやらなければならない
+        }//そんでこれを使って写真を撮るのは課金をする必要が出てくるから一旦やめた方が良いかもしれなくてユーザの投稿した写真を使うっていう形にするしかないかも(完全にパクリ)
+
+        let places: [Place]?
+    }
+
+    // ===== 取得結果 =====
+    var shops: [RamenShop] = []//こいつの状態が変化したらMainでも表示変更
+
+    // ===== 呼び出し口 =====
+    func fetch(latitude: Double, longitude: Double) {
+        Task {
+            await fetchInternal(latitude: latitude, longitude: longitude)
+        }
+    }
+
+    // ===== 実処理 =====
+    @MainActor//本当の非同期処理部分以外(特に)クラス変数に関する部分(shops)(これで画面を表示する)部分は絶対にメインスレッドで動かす　それでもasyncなのは非同期で行わないと画面が止まってしまう時間のかかる処理があるから
+    //同期部分は早いから画面が止まらない
+    private func fetchInternal(
+        latitude: Double,
+        longitude: Double
+    ) async {
+        
+        guard let url = URL(string: "https://places.googleapis.com/v1/places:searchText")//新形式であり直接url検索できないし,bookapiとかと違って条件が広すぎることと、apiとかを別にして見られないようにっていうので分けてる
+        else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("AIzaSyD9V-EGiuEnL7vgd-m7iP7KmooyILUoxVU", forHTTPHeaderField: "X-Goog-Api-Key")
+        request.setValue(//どういうvalueが欲しいのか指定
+            "places.displayName,places.rating,places.location,places.id,places.currentOpeningHours,places.regularOpeningHours, places.nationalPhoneNumber",
+            forHTTPHeaderField: "X-Goog-FieldMask"//検索する対象
+        )
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [//本文の内容に関する条件
+            //"includedTypes": [
+                //"restaurant",
+              //],//食べ物やさん
+            "textQuery": "ラーメン",
+            "languageCode": "ja",
+            "locationBias": [//完全な制限にはなっていないってことです!!
+                "circle": [
+                    "center": [//latitudeとかは現在地
+                        "latitude": latitude,
+                        "longitude": longitude
+                    ],
+                    "radius": 1500//半径1500m検索対象
+                ]
+            ]
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)//requestにbodyをくっつけてる
+
+            //ここからが実際の検索
+            
+            let (data, _) = try await URLSession.shared.data(for: request)//検索が終わるまで非同期の中で待つようにする　そうじゃないと時間かかるからこそ入ってもないのに次の処理を行うことになる
+
+            let json = try JSONDecoder().decode(ResultJson.self, from: data)
+
+            guard let places = json.places else { return } //json.placesにパコったもの(リスト)が入ってる
+
+            shops.removeAll()//後で消します
+            print(1)
+            for place in places {//パコから一箇所ずつ取り出す
+                if let name = place.displayName?.text,
+                   let location = place.location {
+
+                    let shop = RamenShop(//Structに嵌め込む
+                        name: name,
+                        rating: place.rating ?? 0,
+                        coordinate: CLLocationCoordinate2D(
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        ),
+                        isOpenNow: place.currentOpeningHours?.openNow,
+                        regularHours: place.regularOpeningHours?.weekdayDescriptions
+                        //phonenumber: place.nationalPhoneNumber
+                    )
+                    shops.append(shop)
+                }
+            }
+
+            print(shops)
+
+        } catch {
+            print("Places API error:", error)
+        }
+    }
+}
+
